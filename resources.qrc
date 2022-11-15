@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/ParselSorguV2" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>
