@@ -33,6 +33,7 @@ from PyQt5.uic import loadUi
 from requests import request
 from .services import Services
 from qgis.utils import iface
+from qgis.core import QgsLayerTreeGroup, QgsProject
 import json
 
 
@@ -42,7 +43,6 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
 class ParselSorguDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     closingPlugin = pyqtSignal()
-
 
     def __init__(self, parent=None):
         """Constructor."""
@@ -54,9 +54,23 @@ class ParselSorguDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.cbIller.currentIndexChanged.connect(self.ilceler)
         self.cbIlceler.currentIndexChanged.connect(self.mahalleler)
         self.btnAra.clicked.connect(self.parsel)
+    
+
     def closeEvent(self, event):
         self.closingPlugin.emit()
         event.accept()
+
+
+    def layerAdd(self,lyr,lyrGroup,lyrName):
+        QgsProject.instance().addMapLayer(lyr,False)
+        lyRoot = QgsProject().instance().layerTreeRoot()
+        if lyRoot.findGroup(lyrGroup)==None:
+            group=lyRoot.insertGroup(0,lyrGroup)
+            group.addLayer(lyr)
+        else:
+            group =lyRoot.findGroup(lyrGroup)
+            group.addLayer(lyr)
+        lyr.setName(lyrName)
 
     def iller(self):
         service = Services()
@@ -93,9 +107,8 @@ class ParselSorguDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         service = Services()
         response = service.getParsel(mahid ,Ada=Ada, Parsel=Parsel)
         json_object=json.dumps(response.json())
-        layerName = "{0}/{1} - {2} ({3})".format(Ada, Parsel, self.cbIlceler.currentText(), self.cbMahalleler.currentText())
-        layer = iface.addVectorLayer(json_object, layerName, "ogr")
-        layer.setName(layerName)
-        layer = iface.activeLayer()
-
-        layer.selectAll()
+        ilceAd = self.cbIlceler.currentText()
+        mahalleAd = self.cbMahalleler.currentText()
+        layerName = "{0}/{1} - {2})".format(Ada, Parsel, mahalleAd)
+        layer = QgsVectorLayer(json_object, layerName, "ogr")
+        self.layerAdd(layer,ilceAd,layerName)
