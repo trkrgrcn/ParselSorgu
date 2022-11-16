@@ -23,17 +23,12 @@
 """
 
 import os
-import qgis
-import qgis.utils
-from qgis.core import *
 from qgis.PyQt import QtWidgets 
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import pyqtSignal
-from PyQt5.uic import loadUi
-from requests import request
 from .services import Services
-from qgis.utils import iface
-from qgis.core import QgsLayerTreeGroup, QgsProject
+from qgis.core import QgsVectorLayer, QgsProject
+import qgis.core
 import json
 
 
@@ -49,32 +44,43 @@ class ParselSorguDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         super(ParselSorguDockWidget, self).__init__(parent)
 
         self.setupUi(self)
+        self.service=Services()
         self.iller()
         self.btnAra.clicked.connect(self.iller)
         self.cbIller.currentIndexChanged.connect(self.ilceler)
         self.cbIlceler.currentIndexChanged.connect(self.mahalleler)
         self.btnAra.clicked.connect(self.parsel)
-    
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
         event.accept()
 
 
-    def layerAdd(self,lyr,lyrGroup,lyrName):
+    def layerAdd(self,lyr,lyrGroup,lyrSubGroup,lyrName):
         QgsProject.instance().addMapLayer(lyr,False)
+
         lyRoot = QgsProject().instance().layerTreeRoot()
-        if lyRoot.findGroup(lyrGroup)==None:
+
+        group = lyRoot.findGroup(lyrGroup)
+        subGroup = lyRoot.findGroup(lyrSubGroup)
+        if group==None:
+
             group=lyRoot.insertGroup(0,lyrGroup)
-            group.addLayer(lyr)
+            subGroup = group.addGroup(lyrSubGroup)
+            subGroup.addLayer(lyr)
         else:
-            group =lyRoot.findGroup(lyrGroup)
-            group.addLayer(lyr)
+
+            if subGroup==None:
+                subGroup = group.addGroup(lyrSubGroup)
+                subGroup.addLayer(lyr)
+            
+            else:
+                subGroup.addLayer(lyr)
+
         lyr.setName(lyrName)
 
     def iller(self):
-        service = Services()
-        response = service.getData(0,region='il') 
+        response = self.service.getData(0,region='il') 
         illiste = response.json()
         for il in illiste['features']:
             self.cbIller.addItem(il['properties']['text'], userData=il['properties']['id'])
@@ -82,8 +88,7 @@ class ParselSorguDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def ilceler(self):
         self.cbIlceler.clear()
         
-        service = Services()
-        response = service.getData(self.cbIller.currentData(), region='ilce')
+        response = self.service.getData(self.cbIller.currentData(), region='ilce')
         ilceListe = response.json()
         for ilce in ilceListe['features']:
             self.cbIlceler.addItem(ilce['properties']['text'], userData=ilce['properties']['id'])
@@ -91,8 +96,7 @@ class ParselSorguDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def mahalleler(self):
         self.cbMahalleler.clear()
         ilce_id = self.cbIlceler.currentData()
-        service = Services()
-        response = service.getData(ilce_id, region='mahalle')
+        response = self.service.getData(ilce_id, region='mahalle')
         try:
             mahalleListe = response.json()
             for mahalle in mahalleListe['features']:
@@ -104,11 +108,13 @@ class ParselSorguDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         Ada = self.txtAda.text()
         Parsel = self.txtParsel.text()
         mahid = self.cbMahalleler.currentData()
-        service = Services()
-        response = service.getParsel(mahid ,Ada=Ada, Parsel=Parsel)
+        response = self.service.getParsel(mahid ,Ada=Ada, Parsel=Parsel)
         json_object=json.dumps(response.json())
         ilceAd = self.cbIlceler.currentText()
         mahalleAd = self.cbMahalleler.currentText()
-        layerName = "{0}/{1} - {2})".format(Ada, Parsel, mahalleAd)
+        layerName = "{0}/{1}".format(Ada, Parsel)
         layer = QgsVectorLayer(json_object, layerName, "ogr")
-        self.layerAdd(layer,ilceAd,layerName)
+        self.layerAdd(layer,ilceAd,mahalleAd,layerName)
+        
+
+
