@@ -3,7 +3,7 @@ import requests
 class Services(object):
     
     def __init__(self) -> None:
-       self.tkgm_service = 'https://cbsservis.tkgm.gov.tr/megsiswebapi.v3/api'
+       self.tkgm_service = 'https://cbsapi.tkgm.gov.tr/megsiswebapi.v3.1/api'
        self.il_service =  self.tkgm_service +'/idariYapi/ilListe'
        self.ilce_service = self.tkgm_service + '/idariYapi/ilceListe/'
        self.mahalle_service = self.tkgm_service + '/idariYapi/mahalleListe/'
